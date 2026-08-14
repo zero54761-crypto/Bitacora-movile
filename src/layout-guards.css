@@ -1,0 +1,40 @@
+/* U1 mobile layout guards.
+   Keep the single-column application grid shrinkable at the 360 px acceptance gate. */
+
+.app-shell {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.topbar,
+.app-main,
+.bottom-nav {
+  width: 100%;
+  min-width: 0;
+}
+
+.topbar {
+  overflow: hidden;
+}
+
+.identity {
+  flex: 1 1 auto;
+}
+
+.local-badge {
+  flex: 0 1 auto;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 370px) {
+  .topbar {
+    padding-inline: 12px;
+  }
+
+  .local-badge {
+    max-width: 124px;
+    padding-inline: 8px;
+    font-size: 0.68rem;
+  }
+}
