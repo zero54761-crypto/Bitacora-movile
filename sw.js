@@ -1,10 +1,13 @@
-const CACHE_NAME = "bitacora-mobile-v1";
+const CACHE_NAME = "bitacora-personal-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
+  "./404.html",
   "./styles.css",
   "./manifest.webmanifest",
   "./src/app.js",
+  "./src/personal-bootstrap.js",
+  "./src/personal-edition.js",
   "./src/data.js",
   "./src/discovery.js",
   "./src/state.js",
