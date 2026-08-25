@@ -215,12 +215,21 @@ document.addEventListener("keydown", event => {
   if (event.key === "Escape" && ui.modal) closeModal();
 });
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+async function registerServiceWorker() {
+  try {
     const serviceWorkerUrl = new URL("../sw.js", import.meta.url);
-    navigator.serviceWorker.register(serviceWorkerUrl, { scope: "../" })
-      .catch(error => console.warn("No se pudo registrar el service worker.", error));
-  });
+    await navigator.serviceWorker.register(serviceWorkerUrl, { scope: "../" });
+  } catch (error) {
+    console.warn("No se pudo registrar el service worker.", error);
+  }
+}
+
+if ("serviceWorker" in navigator) {
+  if (document.readyState === "complete") {
+    void registerServiceWorker();
+  } else {
+    window.addEventListener("load", () => { void registerServiceWorker(); }, { once: true });
+  }
 }
 
 render();
