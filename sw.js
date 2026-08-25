@@ -7,7 +7,6 @@ const CORE_ASSETS = [
   "./manifest.webmanifest",
   "./src/app.js",
   "./src/personal-bootstrap.js",
-  "./src/personal-edition.js",
   "./src/data.js",
   "./src/discovery.js",
   "./src/state.js",
