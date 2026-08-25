@@ -4,10 +4,12 @@ import { escapeHtml, formatDate, formatDateTime, formatTime, serializeCandidateV
 const doorMeta = {
   today: { label: "Hoy", icon: "◉" },
   projects: { label: "Proyectos", icon: "▦" },
-  attention: { label: "Atención", icon: "!" },
+  attention: { label: "Decisiones", icon: "!" },
   calendar: { label: "Calendario", icon: "◇" },
   more: { label: "Más", icon: "•••" }
 };
+
+const defaultAreas = ["Vida", "Trabajo", "Finanzas", "Proyectos", "Aprendizaje"];
 
 function badge(text, kind = "info") {
   return `<span class="badge ${escapeHtml(kind.toLowerCase())}">${escapeHtml(text)}</span>`;
@@ -22,14 +24,22 @@ function navButton(key, current) {
   const meta = doorMeta[key];
   return `<button class="nav-button ${current === key ? "active" : ""}" data-action="nav" data-door="${key}" aria-current="${current === key ? "page" : "false"}"><span class="nav-icon" aria-hidden="true">${meta.icon}</span><span>${meta.label}</span></button>`;
 }
+function initials(name) {
+  const parts = String(name || "B").trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  return parts.map(part => part[0]?.toUpperCase()).join("") || "B";
+}
+function profileAreas(state) {
+  const areas = Array.isArray(state.profile.ecosystem) ? state.profile.ecosystem.filter(Boolean) : [];
+  return areas.length ? areas : defaultAreas;
+}
 
 export function renderApp(state, ui) {
   const profile = state.profile;
   return `
     <div class="app-shell">
       <header class="topbar">
-        <div class="identity"><div class="avatar" aria-label="Foto de perfil provisional">OL</div><div class="identity-copy"><p class="eyebrow">${escapeHtml(profile.productName)}</p><h1>${escapeHtml(profile.displayName)}</h1></div></div>
-        <span class="local-badge" title="El servidor escucha en 127.0.0.1">Local privado</span>
+        <div class="identity"><div class="avatar" aria-label="Iniciales del perfil">${escapeHtml(initials(profile.displayName))}</div><div class="identity-copy"><p class="eyebrow">${escapeHtml(profile.productName)}</p><h1>${escapeHtml(profile.displayName)}</h1></div></div>
+        <span class="local-badge" title="Tus datos se guardan en este dispositivo">Local</span>
       </header>
       <main class="app-main" id="main-content">${renderDoor(state, ui)}</main>
       <nav class="bottom-nav" aria-label="Navegación principal">${navButton("today", ui.currentDoor)}${navButton("projects", ui.currentDoor)}${navButton("attention", ui.currentDoor)}${navButton("calendar", ui.currentDoor)}${navButton("more", ui.currentDoor)}</nav>
@@ -47,7 +57,7 @@ function renderDoor(state, ui) {
     case "calendar": return renderCalendar(state);
     case "life": return renderLife(state);
     case "finance": return renderFinance(state);
-    case "ecosystem": return renderEcosystem();
+    case "ecosystem": return renderEcosystem(state);
     case "activity": return renderActivity(state);
     case "settings": return renderSettings(state);
     case "more": return renderMore();
@@ -62,16 +72,17 @@ function renderToday(state) {
   const firstAlarm = activeAlarms[0];
   const firstEvent = upcomingEvents[0];
   const activeProject = state.projects.find(project => project.status === "ACTIVO") ?? state.projects[0];
+  const areas = profileAreas(state).slice(0, 5).join(" · ");
   return `<section class="door-view today-layout" aria-labelledby="today-title">
     <div class="hero-card"><div><span class="focus-label">Foco de hoy</span><h2 id="today-title">${escapeHtml(state.profile.focusOfDay)}</h2><p>${escapeHtml(state.profile.priorityAction)}</p></div><div class="energy-orb" title="Energía actual">${escapeHtml(state.profile.energy)}/10</div></div>
     <div class="quick-row" aria-label="Acciones rápidas"><button class="quick-button" data-action="open-modal" data-modal="life">＋ Check-in</button><button class="quick-button" data-action="open-modal" data-modal="alarm">＋ Alarma</button><button class="quick-button" data-action="open-modal" data-modal="event">＋ Evento</button></div>
     <div class="today-grid">
-      <button class="door-button attention" data-action="open-door" data-door="attention"><strong>Necesita de mí · ${attention.length}</strong><span>${attention[0] ? escapeHtml(attention[0].title) : "Sin dependencias reales"}</span></button>
+      <button class="door-button attention" data-action="open-door" data-door="attention"><strong>Necesita de mí · ${attention.length}</strong><span>${attention[0] ? escapeHtml(attention[0].title) : "Sin decisiones pendientes"}</span></button>
       <button class="door-button" data-action="open-door" data-door="projects"><strong>${escapeHtml(activeProject?.name ?? "Proyectos")}</strong><span>${escapeHtml(activeProject?.nextAction ?? "Abrir proyectos")}</span></button>
       <button class="door-button" data-action="open-door" data-door="calendar"><strong>${firstEvent ? formatTime(firstEvent.startsAt) : "Sin evento"}</strong><span>${firstEvent ? escapeHtml(firstEvent.title) : "Calendario libre"}</span></button>
       <button class="door-button" data-action="open-door" data-door="calendar"><strong>${firstAlarm ? formatTime(firstAlarm.scheduledAt) : "Sin alarma"}</strong><span>${firstAlarm ? escapeHtml(firstAlarm.title) : "No hay alarmas activas"}</span></button>
       <button class="door-button" data-action="open-door" data-door="life"><strong>Vida · ${state.profile.focus}/10 foco</strong><span>${state.lifeCheckins.length ? "Último check-in registrado" : "Registrar estado personal"}</span></button>
-      <button class="door-button" data-action="open-door" data-door="ecosystem"><strong>Ecosistema</strong><span>ORVA · ORCE · ACABEX · OPOS · QUADRUM</span></button>
+      <button class="door-button" data-action="open-door" data-door="ecosystem"><strong>Áreas</strong><span>${escapeHtml(areas)}</span></button>
     </div>
   </section>`;
 }
@@ -96,7 +107,7 @@ function renderProjects(state) {
     <div class="gates" aria-label="Gates del proyecto">${project.gates.map(gate => badge(`${gate.code} · ${gate.status}`, gateKind(gate.status))).join("")}</div>
     <div class="actions"><button class="button ghost" data-action="show-project" data-id="${escapeHtml(project.id)}">Ver ficha</button></div>
   </article>`).join("");
-  return `<section class="door-view">${doorHeader("Proyectos", "Estados y gates verificables; sin porcentajes inventados.")}<div class="panel-scroll"><div class="notice">Los proyectos externos se muestran como contexto local. U1 no modifica ningún repositorio ni sistema productivo.</div><div class="section-title">Proyectos registrados</div><div class="list">${cards}</div></div></section>`;
+  return `<section class="door-view">${doorHeader("Proyectos", "Objetivo, siguiente acción, bloqueo y evidencia de cierre.")}<div class="panel-scroll"><div class="notice">Registra solo proyectos que realmente quieras dirigir desde esta Bitácora.</div><div class="section-title">Proyectos registrados</div><div class="list">${cards}</div></div></section>`;
 }
 
 function urgencyKind(urgency) { return urgency === "high" ? "urgent" : urgency === "medium" ? "pending" : "info"; }
@@ -105,7 +116,7 @@ function renderAttention(state) {
   const resolved = state.attentionItems.filter(item => item.status === "resolved");
   const openCards = open.map(item => `<article class="list-card"><div class="list-card-top"><div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.area)}</p></div>${badge(item.urgency === "high" ? "Urgente" : item.urgency === "medium" ? "Importante" : "Normal", urgencyKind(item.urgency))}</div><p><strong>Por qué:</strong> ${escapeHtml(item.reason)}</p><p><strong>Impacto:</strong> ${escapeHtml(item.impact)}</p><div class="actions">${item.sourceUrl === "local://profile-discovery" ? `<button class="button primary" data-action="rerun-discovery">Revisar mi perfil</button>` : ""}<button class="button" data-action="resolve-attention" data-id="${escapeHtml(item.id)}">Marcar resuelto</button></div></article>`).join("");
   const resolvedCards = resolved.slice(0, 5).map(item => `<article class="list-card"><div class="list-card-top"><h4>${escapeHtml(item.title)}</h4>${badge("Resuelto", "resolved")}</div><p>${escapeHtml(item.area)}</p></article>`).join("");
-  return `<section class="door-view">${doorHeader("Necesita de mí", "Solo decisiones y acciones que realmente dependen de Don Orlando.")}<div class="panel-scroll">${open.length ? `<div class="list">${openCards}</div>` : emptyState("Nada requiere tu intervención", "Bitácora seguirá mostrando aquí solo dependencias reales.")}${resolved.length ? `<div class="section-title">Resueltos recientemente</div><div class="list">${resolvedCards}</div>` : ""}</div></section>`;
+  return `<section class="door-view">${doorHeader("Necesita de mí", "Solo decisiones y acciones que realmente dependen de ti.")}<div class="panel-scroll">${open.length ? `<div class="list">${openCards}</div>` : emptyState("Nada requiere tu intervención", "Bitácora mostrará aquí solo dependencias reales.")}${resolved.length ? `<div class="section-title">Resueltos recientemente</div><div class="list">${resolvedCards}</div>` : ""}</div></section>`;
 }
 
 function renderAlarmCard(alarm) {
@@ -120,7 +131,7 @@ function renderCalendar(state) {
   const events = sortByDate(state.events, "startsAt");
   const todayEvents = events.filter(event => todayKey(event.startsAt) === today);
   const futureEvents = events.filter(event => todayKey(event.startsAt) !== today);
-  return `<section class="door-view">${doorHeader("Calendario y alarmas", "Datos guardados únicamente en este navegador.", `<div class="actions"><button class="icon-button" data-action="open-modal" data-modal="alarm" aria-label="Nueva alarma">⏰</button><button class="icon-button" data-action="open-modal" data-modal="event" aria-label="Nuevo evento">＋</button></div>`)}<div class="panel-scroll"><div class="notice warning">Las alarmas de U1 viven dentro de Bitácora. Las notificaciones en segundo plano se validarán después, antes de prometerlas.</div><div class="section-title">Hoy</div>${todayEvents.length ? `<div class="list">${todayEvents.map(renderEventCard).join("")}</div>` : emptyState("Sin eventos para hoy")}<div class="section-title">Próximos eventos</div>${futureEvents.length ? `<div class="list">${futureEvents.map(renderEventCard).join("")}</div>` : emptyState("Sin eventos próximos")}<div class="section-title">Alarmas</div>${alarms.length ? `<div class="list">${alarms.map(renderAlarmCard).join("")}</div>` : emptyState("Sin alarmas")}</div></section>`;
+  return `<section class="door-view">${doorHeader("Calendario y alarmas", "Datos guardados únicamente en este dispositivo.", `<div class="actions"><button class="icon-button" data-action="open-modal" data-modal="alarm" aria-label="Nueva alarma">⏰</button><button class="icon-button" data-action="open-modal" data-modal="event" aria-label="Nuevo evento">＋</button></div>`)}<div class="panel-scroll"><div class="notice warning">Las alarmas viven dentro de Bitácora. Los eventos se pueden exportar al calendario del teléfono.</div><div class="section-title">Hoy</div>${todayEvents.length ? `<div class="list">${todayEvents.map(renderEventCard).join("")}</div>` : emptyState("Sin eventos para hoy")}<div class="section-title">Próximos eventos</div>${futureEvents.length ? `<div class="list">${futureEvents.map(renderEventCard).join("")}</div>` : emptyState("Sin eventos próximos")}<div class="section-title">Alarmas</div>${alarms.length ? `<div class="list">${alarms.map(renderAlarmCard).join("")}</div>` : emptyState("Sin alarmas")}</div></section>`;
 }
 
 function renderLife(state) {
@@ -130,30 +141,24 @@ function renderLife(state) {
 }
 
 function renderFinance(state) {
-  return `<section class="door-view">${doorHeader("Finanzas", "Control básico local; sin bancos ni saldos importados.")}<div class="panel-scroll"><div class="notice warning">U1 no incluye cifras financieras reales. Los campos se mantienen vacíos hasta que Don Orlando decida registrarlos manualmente en una fase segura.</div><div class="metrics-grid" style="margin-top:10px"><div class="metric-card"><span>Liquidez</span><strong>${escapeHtml(state.finance.liquidityStatus)}</strong></div><div class="metric-card"><span>Obligaciones registradas</span><strong>${escapeHtml(state.finance.obligationsCount)}</strong></div><div class="metric-card"><span>Capital de proyectos</span><strong>${escapeHtml(state.finance.projectCapitalStatus)}</strong></div></div><div class="section-title">Alertas</div><div class="list">${state.finance.alerts.map(alert => `<div class="list-card"><p>${escapeHtml(alert)}</p></div>`).join("")}</div></div></section>`;
+  return `<section class="door-view">${doorHeader("Finanzas", "Control básico local; sin cuentas bancarias conectadas.")}<div class="panel-scroll"><div class="notice warning">Registra únicamente la información que quieras conservar en este dispositivo. No guardes contraseñas bancarias.</div><div class="metrics-grid" style="margin-top:10px"><div class="metric-card"><span>Liquidez</span><strong>${escapeHtml(state.finance.liquidityStatus)}</strong></div><div class="metric-card"><span>Obligaciones registradas</span><strong>${escapeHtml(state.finance.obligationsCount)}</strong></div><div class="metric-card"><span>Capital de proyectos</span><strong>${escapeHtml(state.finance.projectCapitalStatus)}</strong></div></div><div class="section-title">Alertas</div><div class="list">${state.finance.alerts.map(alert => `<div class="list-card"><p>${escapeHtml(alert)}</p></div>`).join("")}</div></div></section>`;
 }
 
-const ecosystemItems = [
-  ["ORVA Group Holdings", "Holding, visión y gobierno del ecosistema."],
-  ["ORCE Systems and Services", "Software, IA, automatización e infraestructura."],
-  ["ACABEX", "Operación comercial, catálogo, cotización y ventas."],
-  ["OPOS POS", "Producto POS independiente; solo observación en Bitácora."],
-  ["QUADRUM OS", "Arquitectura y gestión de proyectos y procesos."]
-];
-function renderEcosystem() {
-  return `<section class="door-view">${doorHeader("Ecosistema", "Accesos informativos y configurables; cero acciones productivas en U1.")}<div class="panel-scroll"><div class="notice">Cada producto conserva su repositorio y sistema independiente. Bitácora solo será la capa de control.</div><div class="ecosystem-grid" style="margin-top:10px">${ecosystemItems.map(([name, description]) => `<article class="mini-card"><span>Puerta</span><strong>${escapeHtml(name)}</strong><p class="muted">${escapeHtml(description)}</p><button class="button ghost" data-action="ecosystem-placeholder" data-name="${escapeHtml(name)}">Ver estado local</button></article>`).join("")}</div></div></section>`;
+function renderEcosystem(state) {
+  const areas = profileAreas(state).slice(0, 8);
+  return `<section class="door-view">${doorHeader("Áreas", "Organiza las partes de tu vida sin mezclarlas.")}<div class="panel-scroll"><div class="notice">Cada área funciona como una puerta de contexto. Tú decides qué registrar y qué mantener fuera de Bitácora.</div><div class="ecosystem-grid" style="margin-top:10px">${areas.map((name, index) => `<article class="mini-card"><span>Área ${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(name)}</strong><p class="muted">Define prioridades, decisiones y evidencia de esta área.</p><button class="button ghost" data-action="ecosystem-placeholder" data-name="${escapeHtml(name)}">Abrir contexto</button></article>`).join("")}</div></div></section>`;
 }
 function renderActivity(state) {
   const events = [...state.activityEvents].sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()).slice(0, 30);
   return `<section class="door-view">${doorHeader("Actividad", "Evidencia local de decisiones, eventos y cambios de estado.")}<div class="panel-scroll">${events.length ? `<div class="list">${events.map(event => `<article class="list-card"><div class="list-card-top"><div><h4>${escapeHtml(event.title)}</h4><p>${formatDateTime(event.occurredAt)}</p></div>${badge(event.type, "info")}</div><p>${escapeHtml(event.summary)}</p><p>Fuente: ${escapeHtml(event.source)}</p></article>`).join("")}</div>` : emptyState("Sin actividad")}</div></section>`;
 }
 function renderMore() {
-  const doors = [["life", "Vida", "Energía, foco, rutina y check-ins."], ["finance", "Finanzas", "Control básico sin datos bancarios."], ["ecosystem", "Ecosistema", "ORVA, ORCE, ACABEX, OPOS y QUADRUM."], ["activity", "Actividad", "Timeline de evidencia y decisiones."], ["settings", "Configuración", "Privacidad, Conocerme y datos locales."]];
-  return `<section class="door-view">${doorHeader("Más", "Puertas secundarias de Bitácora.")}<div class="panel-scroll"><div class="more-grid">${doors.map(([key, title, description]) => `<button class="door-button" data-action="open-door" data-door="${key}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(description)}</span></button>`).join("")}</div></div></section>`;
+  const doors = [["life", "Vida", "Energía, foco, rutina y check-ins."], ["finance", "Finanzas", "Control básico sin contraseñas bancarias."], ["ecosystem", "Áreas", "Vida, trabajo, finanzas, proyectos y aprendizaje."], ["activity", "Actividad", "Timeline de evidencia y decisiones."], ["settings", "Configuración", "Privacidad, Conocerme, respaldo y datos locales."]];
+  return `<section class="door-view">${doorHeader("Más", "Puertas secundarias de Bitácora Personal.")}<div class="panel-scroll"><div class="more-grid">${doors.map(([key, title, description]) => `<button class="door-button" data-action="open-door" data-door="${key}"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(description)}</span></button>`).join("")}</div></div></section>`;
 }
 function renderSettings(state) {
   const receipt = state.discovery.receipt;
-  return `<section class="door-view">${doorHeader("Configuración", "Modo local privado y control de datos.")}<div class="panel-scroll"><div class="card"><h3>Ejecución local</h3><p>Bitácora escucha en <strong>127.0.0.1</strong> y guarda los datos en este navegador. No hay conexiones a producción.</p><div class="gates">${badge("Solo esta computadora", "pass")}${badge("Sin APIs externas", "pass")}${badge("Despliegue pendiente", "pending")}</div></div><div class="card"><h3>Conocerme</h3><p>${receipt ? `Importación local completada el ${formatDateTime(receipt.completedAt)}. Puedes repetirla manualmente.` : "La revisión inicial de perfil está pendiente."}</p><div class="actions"><button class="button primary" data-action="rerun-discovery">${receipt ? "Volver a buscar mi información" : "Conocerme"}</button></div></div><div class="card"><h3>Datos locales</h3><p>Restablecer elimina alarmas, eventos, check-ins y preferencias guardadas en este navegador.</p><div class="actions"><button class="button danger" data-action="reset-app">Restablecer Bitácora local</button></div></div><div class="card"><h3>Despliegue futuro</h3><p>La misma aplicación podrá publicarse después de añadir autenticación y almacenamiento privado. U1 no despliega nada.</p></div></div></section>`;
+  return `<section class="door-view">${doorHeader("Configuración", "Privacidad, perfil, respaldo y datos del dispositivo.")}<div class="panel-scroll"><div class="card"><h3>Datos locales</h3><p>Bitácora guarda la información en este navegador y puede funcionar sin una cuenta remota.</p><div class="gates">${badge("Solo este dispositivo", "pass")}${badge("Sin cuenta obligatoria", "pass")}${badge("PWA instalable", "pass")}</div></div><div class="card"><h3>Conocerme</h3><p>${receipt ? `Configuración personal completada el ${formatDateTime(receipt.completedAt)}. Puedes repetirla manualmente.` : "La configuración inicial está pendiente."}</p><div class="actions"><button class="button primary" data-action="rerun-discovery">${receipt ? "Editar mi perfil" : "Conocerme"}</button></div></div><div class="card"><h3>Restablecer</h3><p>Restablecer elimina alarmas, eventos, proyectos, check-ins y preferencias de este navegador.</p><div class="actions"><button class="button danger" data-action="reset-app">Restablecer Bitácora local</button></div></div><div class="card"><h3>Sincronización futura</h3><p>Una edición posterior podrá añadir cuentas y sincronización privada sin cambiar la base local-first.</p></div></div></section>`;
 }
 
 function renderOnboarding(state, ui) {
@@ -163,14 +168,14 @@ function renderOnboarding(state, ui) {
   let body = "";
   let footer = "";
   if (step === "welcome") {
-    body = `<div class="onboarding-logo">B</div><p class="eyebrow">Primera configuración</p><h2>Bitácora puede conocerte sin hacerte capturar todo desde cero.</h2><p class="muted">Preparé un contexto inicial sanitizado. Tú decidirás qué aceptar, editar o rechazar.</p><div class="notice">Esta versión funciona localmente. No consulta Drive, ChatGPT, Gmail ni Calendar todavía.</div>`;
-    footer = `<button class="button ghost" data-action="discovery-manual">Configurar manualmente</button><button class="button primary" data-action="discovery-next" data-step="consent">Conocerme</button>`;
+    body = `<div class="onboarding-logo">B</div><p class="eyebrow">Primera configuración</p><h2>Crea una Bitácora que se adapte a ti.</h2><p class="muted">Revisa ejemplos editables y decide qué información quieres guardar en este dispositivo.</p><div class="notice">No se consulta ninguna cuenta externa. Solo se guardará lo que tú apruebes.</div>`;
+    footer = `<button class="button ghost" data-action="discovery-manual">Configuración mínima</button><button class="button primary" data-action="discovery-next" data-step="consent">Conocerme</button>`;
   } else if (step === "consent") {
-    body = `<h2>Autoriza las categorías</h2><p class="muted">Bitácora propondrá únicamente información útil para tu perfil y operación personal.</p><div class="card"><h3>Puede proponer</h3><p>Identidad, ubicación general, idiomas, trabajo, capacidades, objetivos, principios, preferencias y ecosistema.</p></div><div class="card"><h3>No puede importar</h3><p>Contraseñas, tokens, IDs productivos, bancos, saldos exactos, deudas, porcentajes accionarios, direcciones exactas ni datos sensibles de terceros.</p></div><label class="notice"><input type="checkbox" id="discovery-consent" ${ui.discoveryConsent ? "checked" : ""} /> Autorizo esta revisión local y entiendo que nada se guardará sin mi confirmación.</label>`;
+    body = `<h2>Autoriza las categorías</h2><p class="muted">Bitácora propondrá únicamente ejemplos útiles para personalizar tu espacio.</p><div class="card"><h3>Puedes guardar</h3><p>Nombre, ubicación general, idiomas, trabajo, fortalezas, objetivos, principios, preferencias y áreas de vida.</p></div><div class="card"><h3>No debes guardar aquí</h3><p>Contraseñas, tokens, credenciales bancarias, documentos de identidad, direcciones exactas ni datos sensibles de terceros.</p></div><label class="notice"><input type="checkbox" id="discovery-consent" ${ui.discoveryConsent ? "checked" : ""} /> Autorizo esta configuración local y entiendo que nada se guardará sin mi confirmación.</label>`;
     footer = `<button class="button ghost" data-action="discovery-next" data-step="welcome">Atrás</button><button class="button primary" data-action="discovery-next" data-step="review" ${ui.discoveryConsent ? "" : "disabled"}>Continuar</button>`;
   } else if (step === "review") {
     const candidates = state.discovery.candidates;
-    body = `<h2>Revisa cada propuesta</h2><p class="muted">Selecciona aceptar, editar o rechazar. Solo se guardará lo aprobado.</p><div class="notice">Contexto inicial preparado de forma local; conexiones externas pendientes.</div><div class="candidate-list" style="margin-top:10px">${candidates.map(candidate => `<article class="candidate ${candidate.decision}"><div class="candidate-top"><div><h3>${escapeHtml(candidate.category)}</h3><p>${escapeHtml(candidate.sourceLabel)}</p></div>${badge(candidate.confidence, candidate.confidence === "CONFIRMADO" ? "pass" : candidate.confidence === "REVISAR" ? "pending" : "info")}</div><p class="candidate-value">${escapeHtml(candidateDisplayValue(candidate))}</p>${candidate.decision === "edited" ? `<div class="field" style="margin-top:8px"><label for="candidate-${escapeHtml(candidate.key)}">Valor editado</label><input id="candidate-${escapeHtml(candidate.key)}" data-candidate-input="${escapeHtml(candidate.key)}" value="${escapeHtml(serializeCandidateValue(candidate.editedValue))}" /></div>` : ""}<div class="candidate-actions"><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="accepted">Aceptar</button><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="edited">Editar</button><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="rejected">Rechazar</button></div></article>`).join("")}</div>`;
+    body = `<h2>Revisa cada propuesta</h2><p class="muted">Selecciona aceptar, editar o rechazar. Solo se guardará lo aprobado.</p><div class="notice">Los valores son ejemplos editables; no provienen de cuentas externas.</div><div class="candidate-list" style="margin-top:10px">${candidates.map(candidate => `<article class="candidate ${candidate.decision}"><div class="candidate-top"><div><h3>${escapeHtml(candidate.category)}</h3><p>${escapeHtml(candidate.sourceLabel)}</p></div>${badge(candidate.confidence, candidate.confidence === "CONFIRMADO" ? "pass" : candidate.confidence === "REVISAR" ? "pending" : "info")}</div><p class="candidate-value">${escapeHtml(candidateDisplayValue(candidate))}</p>${candidate.decision === "edited" ? `<div class="field" style="margin-top:8px"><label for="candidate-${escapeHtml(candidate.key)}">Valor editado</label><input id="candidate-${escapeHtml(candidate.key)}" data-candidate-input="${escapeHtml(candidate.key)}" value="${escapeHtml(serializeCandidateValue(candidate.editedValue))}" /></div>` : ""}<div class="candidate-actions"><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="accepted">Aceptar</button><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="edited">Editar</button><button data-action="candidate-decision" data-key="${escapeHtml(candidate.key)}" data-decision="rejected">Rechazar</button></div></article>`).join("")}</div>`;
     footer = `<button class="button ghost" data-action="discovery-next" data-step="consent">Atrás</button><button class="button primary" data-action="discovery-next" data-step="confirm" ${hasMinimumDecisions(candidates) ? "" : "disabled"}>Revisar guardado</button>`;
   } else {
     const accepted = state.discovery.candidates.filter(candidate => candidate.decision === "accepted" || candidate.decision === "edited");
@@ -179,7 +184,7 @@ function renderOnboarding(state, ui) {
     body = `<h2>Confirma tu perfil</h2><p class="muted">Bitácora guardará solo los ${accepted.length} campos aprobados.</p><div class="metrics-grid"><div class="metric-card"><span>Aceptados/editados</span><strong>${accepted.length}</strong></div><div class="metric-card"><span>Rechazados</span><strong>${rejected.length}</strong></div><div class="metric-card"><span>Pendientes omitidos</span><strong>${pending.length}</strong></div></div><div class="section-title">Se guardará</div><div class="list">${accepted.map(candidate => `<div class="list-card"><strong>${escapeHtml(candidate.category)}</strong><p>${escapeHtml(candidateDisplayValue(candidate))}</p></div>`).join("")}</div>`;
     footer = `<button class="button ghost" data-action="discovery-next" data-step="review">Atrás</button><button class="button gold" data-action="discovery-confirm">Confirmar mi perfil</button>`;
   }
-  return `<div class="onboarding-backdrop" role="dialog" aria-modal="true" aria-labelledby="onboarding-title"><section class="onboarding"><header class="onboarding-header"><p class="eyebrow">Bitácora · Don Orlando López</p><div class="stepper" aria-hidden="true">${steps}</div></header><div class="onboarding-body" id="onboarding-title">${body}</div><footer class="onboarding-footer">${footer}</footer></section></div>`;
+  return `<div class="onboarding-backdrop" role="dialog" aria-modal="true" aria-labelledby="onboarding-title"><section class="onboarding"><header class="onboarding-header"><p class="eyebrow">Bitácora Personal</p><div class="stepper" aria-hidden="true">${steps}</div></header><div class="onboarding-body" id="onboarding-title">${body}</div><footer class="onboarding-footer">${footer}</footer></section></div>`;
 }
 
 function renderModal(state, ui) {
