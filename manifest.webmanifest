@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Bitácora — Don Orlando López",
+  "name": "Bitácora Personal",
   "short_name": "Bitácora",
-  "description": "Centro de mando personal y empresarial local-first.",
+  "description": "Organiza prioridades, proyectos, decisiones y evidencia desde tu teléfono.",
   "lang": "es-MX",
   "start_url": "./",
   "scope": "./",
@@ -12,8 +12,8 @@
   "theme_color": "#6d4aff",
   "categories": [
     "productivity",
-    "business",
-    "lifestyle"
+    "lifestyle",
+    "utilities"
   ],
   "icons": [
     {
