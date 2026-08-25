@@ -4,7 +4,7 @@ Aplicación PWA local-first para organizar prioridades, proyectos, decisiones, a
 
 ## Producto
 
-Esta edición es genérica y está separada de **Bitácora Orlando**, que permanece privada en otro repositorio.
+Esta edición es genérica y está separada de cualquier edición privada personalizada.
 
 Bitácora Personal comienza con un onboarding llamado **Conocerme**. Cada persona decide qué nombre, objetivos, áreas, preferencias y principios desea guardar. No se importa información desde cuentas externas.
 
@@ -12,7 +12,7 @@ Bitácora Personal comienza con un onboarding llamado **Conocerme**. Cada person
 
 - Los datos viven en el navegador o dispositivo.
 - IndexedDB es el almacenamiento principal y `localStorage` funciona como espejo de recuperación.
-- La aplicación no contiene datos, proyectos, marcas ni contexto privado de Orlando u ORVA.
+- La aplicación pública no contiene identidades, proyectos, marcas ni contexto privado precargado.
 - No almacena contraseñas, tokens, credenciales bancarias ni documentos privados.
 - El respaldo JSON debe guardarse en una ubicación privada elegida por el usuario.
 
@@ -41,7 +41,7 @@ python3 -m http.server 8099
 
 ## Frontera de producto
 
-- `Bitacora-app`: edición privada y personalizada de Orlando.
+- `Bitacora-app`: edición privada personalizada.
 - `Bitacora-movile`: distribución pública de Bitácora Personal.
 - Una futura edición Teams necesitará autenticación, organizaciones, permisos y sincronización privada; no forma parte de v1.
 
