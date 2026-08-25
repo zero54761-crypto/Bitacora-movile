@@ -1,0 +1,83 @@
+name: Validate Bitácora Personal
+
+on:
+  push:
+    branches:
+      - feat/bitacora-personal-v1
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JavaScript syntax
+        run: |
+          find src -name '*.js' -print0 | xargs -0 -n1 node --check
+          node --check sw.js
+
+      - name: Validate manifest and local imports
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          JSON.parse(fs.readFileSync('manifest.webmanifest', 'utf8'));
+          const files = [];
+          function walk(dir) {
+            for (const name of fs.readdirSync(dir)) {
+              const full = path.join(dir, name);
+              const stat = fs.statSync(full);
+              if (stat.isDirectory()) walk(full);
+              else if (full.endsWith('.js')) files.push(full);
+            }
+          }
+          walk('src');
+          for (const file of files) {
+            const text = fs.readFileSync(file, 'utf8');
+            for (const match of text.matchAll(/(?:from\s+|import\s*\()(["'])(\.\.?\/[^"']+)\1/g)) {
+              const target = path.resolve(path.dirname(file), match[2]);
+              const candidates = [target, `${target}.js`, path.join(target, 'index.js')];
+              if (!candidates.some(candidate => fs.existsSync(candidate))) {
+                throw new Error(`${file}: import local no resuelto ${match[2]}`);
+              }
+            }
+          }
+          NODE
+
+      - name: Verify product identity and wiring
+        run: |
+          grep -Fq '<title>Bitácora Personal</title>' index.html
+          grep -Fq '"name": "Bitácora Personal"' manifest.webmanifest
+          grep -Fq './src/app.js' index.html
+          grep -Fq './src/personal-bootstrap.js' sw.js
+          grep -Fq 'bitacora.personal.state.v1' src/state.js
+          grep -Fq 'bitacora-personal-local' src/persistence.js
+
+      - name: Scan public tree for private identity or product context
+        run: |
+          if git grep -nEi '(Don[[:space:]]+Orlando|Orlando[[:space:]]+L[oó]pez|\bORVA\b|\bORCE\b|\bACABEX\b|\bOPOS\b|\bQUADRUM\b|panel-orlando|orvagroupholdings)' -- . ':!.github/workflows/validate-personal.yml'; then
+            echo 'La edición pública todavía contiene identidad o contexto privado.'
+            exit 1
+          fi
+
+      - name: Serve and smoke-test static PWA
+        run: |
+          python3 -m http.server 8099 >/tmp/bitacora-personal-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:8099/ >/tmp/index.html; then break; fi
+            sleep 1
+          done
+          grep -Fq 'Bitácora Personal' /tmp/index.html
+          curl --fail --silent http://127.0.0.1:8099/src/app.js >/dev/null
+          curl --fail --silent http://127.0.0.1:8099/src/ui.js >/dev/null
+          curl --fail --silent http://127.0.0.1:8099/manifest.webmanifest >/dev/null
+          curl --fail --silent http://127.0.0.1:8099/sw.js >/dev/null
