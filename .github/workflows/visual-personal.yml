@@ -1,0 +1,140 @@
+name: Visual QA Bitácora Personal
+
+on:
+  push:
+    branches:
+      - feat/bitacora-personal-v1
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start static server
+        run: |
+          python3 -m http.server 8099 >/tmp/bitacora-personal-http.log 2>&1 &
+          echo $! >/tmp/bitacora-personal-http.pid
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:8099/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/bitacora-personal-http.log
+          exit 1
+
+      - name: Run mobile onboarding and offline checks
+        run: |
+          mkdir -p artifacts/visual
+          node - <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const viewports = [
+            { name: '360x640', width: 360, height: 640 },
+            { name: '390x844', width: 390, height: 844 }
+          ];
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            for (const [viewportIndex, viewport] of viewports.entries()) {
+              const context = await browser.newContext({ viewport });
+              const page = await context.newPage();
+              page.setDefaultTimeout(12_000);
+              page.setDefaultNavigationTimeout(12_000);
+              const errors = [];
+              page.on('pageerror', error => errors.push(error.message));
+              page.on('console', message => {
+                if (message.type() === 'error') errors.push(message.text());
+              });
+
+              await page.goto('http://127.0.0.1:8099/', { waitUntil: 'networkidle' });
+              await page.locator('.onboarding').waitFor();
+              await page.getByText('Bitácora Personal', { exact: true }).first().waitFor();
+              await page.locator('.onboarding [data-action="discovery-next"][data-step="consent"]').click();
+              await page.locator('#discovery-consent').check();
+              await page.locator('.onboarding [data-action="discovery-next"][data-step="review"]').click();
+
+              const nameCard = page.locator('.candidate').filter({ has: page.getByRole('heading', { name: 'Nombre', exact: true }) });
+              await nameCard.getByRole('button', { name: 'Editar', exact: true }).click();
+              await nameCard.locator('[data-candidate-input="displayName"]').fill('Ana Pérez');
+
+              const instanceCard = page.locator('.candidate').filter({ has: page.getByRole('heading', { name: 'Nombre de tu espacio', exact: true }) });
+              await instanceCard.getByRole('button', { name: 'Editar', exact: true }).click();
+              await instanceCard.locator('[data-candidate-input="productInstance"]').fill('Bitácora de Ana');
+
+              await page.locator('.onboarding [data-action="discovery-next"][data-step="confirm"]').click();
+              await page.locator('.onboarding [data-action="discovery-confirm"]').click();
+              await page.locator('.onboarding').waitFor({ state: 'detached' });
+              await page.getByRole('heading', { name: 'Ana Pérez', exact: true }).waitFor();
+              if ((await page.locator('.avatar').textContent()).trim() !== 'AP') throw new Error('Las iniciales personalizadas no se renderizaron.');
+
+              const layout = await page.evaluate(() => ({
+                width: window.innerWidth,
+                scrollWidth: document.documentElement.scrollWidth
+              }));
+              if (layout.scrollWidth > layout.width + 1) throw new Error(`Overflow horizontal en ${viewport.name}`);
+
+              await page.screenshot({ path: `artifacts/visual/home-${viewport.name}.png`, fullPage: true });
+
+              await page.locator('[data-action="open-modal"][data-modal="alarm"]').first().click();
+              await page.locator('#alarm-title').fill('Revisar mi prioridad');
+              await page.locator('#alarm-time').fill('2026-08-25T09:00');
+              await page.locator('[data-action="submit-form"][data-form="alarm-form"]').click();
+              await page.locator('.modal-backdrop').waitFor({ state: 'detached' });
+              await page.locator('.bottom-nav [data-action="nav"][data-door="calendar"]').click();
+              await page.getByText('Revisar mi prioridad', { exact: true }).waitFor();
+              await page.screenshot({ path: `artifacts/visual/calendar-${viewport.name}.png`, fullPage: true });
+
+              if (viewportIndex === 0) {
+                await page.goto('http://127.0.0.1:8099/', { waitUntil: 'networkidle' });
+                await page.evaluate(async () => {
+                  if (!('serviceWorker' in navigator)) throw new Error('Service worker no soportado.');
+                  await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('El service worker no se activó en 6 segundos.')), 6_000))
+                  ]);
+                });
+                await page.reload({ waitUntil: 'networkidle' });
+                await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+                await context.setOffline(true);
+                await page.reload({ waitUntil: 'domcontentloaded', timeout: 10_000 });
+                await page.getByRole('heading', { name: 'Ana Pérez', exact: true }).waitFor();
+                await context.setOffline(false);
+              }
+
+              if (errors.length) throw new Error(`Errores de navegador en ${viewport.name}: ${errors.join(' | ')}`);
+              await context.close();
+            }
+            await browser.close();
+            fs.writeFileSync('artifacts/visual/result.txt', 'PASS: onboarding, personalización, alarma, no-overflow y apertura offline.\n');
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitacora-personal-visual-qa
+          path: artifacts/visual
+          if-no-files-found: warn
+          retention-days: 7

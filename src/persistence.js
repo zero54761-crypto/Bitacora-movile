@@ -1,6 +1,6 @@
 import { deepClone } from "./utils.js";
 
-export const INDEXED_DB_NAME = "bitacora-local";
+export const INDEXED_DB_NAME = "bitacora-personal-local";
 export const INDEXED_DB_VERSION = 1;
 export const INDEXED_STATE_KEY = "current-state";
 

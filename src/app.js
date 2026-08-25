@@ -16,8 +16,10 @@ import {
 } from "./state.js";
 import { renderApp } from "./ui.js";
 import { fromDateTimeLocal } from "./utils.js";
+import { ensurePersonalEdition } from "./personal-bootstrap.js";
 
 const root = document.querySelector("#app");
+await ensurePersonalEdition();
 let state = await initializeState();
 let ui = {
   currentDoor: "today",
@@ -85,9 +87,10 @@ root.addEventListener("submit", event => {
   event.preventDefault();
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
-  if (form.id === "alarm-form") handleAlarmSubmit(form);
-  if (form.id === "event-form") handleEventSubmit(form);
-  if (form.id === "life-form") handleLifeSubmit(form);
+  const formId = form.getAttribute("id") || "";
+  if (formId === "alarm-form") handleAlarmSubmit(form);
+  if (formId === "event-form") handleEventSubmit(form);
+  if (formId === "life-form") handleLifeSubmit(form);
 });
 
 root.addEventListener("input", event => {
@@ -152,7 +155,7 @@ root.addEventListener("click", event => {
     return setToast("Elemento marcado como resuelto");
   }
   if (action === "ecosystem-placeholder") {
-    return setToast(`${button.dataset.name}: conexión read-only pendiente de una fase futura`);
+    return setToast(`${button.dataset.name}: área local lista para personalizar`);
   }
   if (action === "discovery-next") {
     const nextStep = button.dataset.step;
@@ -173,17 +176,17 @@ root.addEventListener("click", event => {
     ui.discoveryOpen = false;
     ui.discoveryStep = "welcome";
     ui.discoveryConsent = false;
-    return setToast("Tu perfil inicial quedó guardado en este navegador");
+    return setToast("Tu Bitácora Personal quedó configurada en este dispositivo");
   }
   if (action === "discovery-manual") {
     state.discovery.candidates = state.discovery.candidates.map(candidate => ({
       ...candidate,
-      decision: candidate.key === "displayName" || candidate.key === "productInstance" ? "accepted" : "rejected",
-      editedValue: undefined
+      decision: candidate.key === "displayName" || candidate.key === "productInstance" ? "edited" : "rejected",
+      editedValue: candidate.key === "displayName" ? "Tu nombre" : candidate.key === "productInstance" ? "Mi Bitácora" : undefined
     }));
     state = completeDiscovery(state, new Date().toISOString());
     ui.discoveryOpen = false;
-    return setToast("Configuración manual iniciada con datos mínimos");
+    return setToast("Configuración mínima creada; puedes editarla desde Configuración");
   }
   if (action === "rerun-discovery") {
     state = reopenDiscovery(state);
@@ -194,10 +197,10 @@ root.addEventListener("click", event => {
     return render();
   }
   if (action === "reset-app") {
-    if (window.confirm("Esto eliminará todos los datos locales de Bitácora en este navegador. ¿Continuar?")) {
+    if (window.confirm("Esto eliminará todos los datos locales de tu Bitácora en este navegador. ¿Continuar?")) {
       state = resetState();
       ui = { currentDoor: "today", modal: null, discoveryOpen: true, discoveryStep: "welcome", discoveryConsent: false, discoveryConsentedAt: null, toast: "" };
-      return setToast("Bitácora local fue restablecida");
+      return setToast("Bitácora Personal fue restablecida");
     }
   }
 });
@@ -212,12 +215,21 @@ document.addEventListener("keydown", event => {
   if (event.key === "Escape" && ui.modal) closeModal();
 });
 
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
+async function registerServiceWorker() {
+  try {
     const serviceWorkerUrl = new URL("../sw.js", import.meta.url);
-    navigator.serviceWorker.register(serviceWorkerUrl, { scope: "../" })
-      .catch(error => console.warn("No se pudo registrar el service worker.", error));
-  });
+    await navigator.serviceWorker.register(serviceWorkerUrl, { scope: "../" });
+  } catch (error) {
+    console.warn("No se pudo registrar el service worker.", error);
+  }
+}
+
+if ("serviceWorker" in navigator) {
+  if (document.readyState === "complete") {
+    void registerServiceWorker();
+  } else {
+    window.addEventListener("load", () => { void registerServiceWorker(); }, { once: true });
+  }
 }
 
 render();

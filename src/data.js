@@ -1,55 +1,120 @@
-import { addDays, addHours, deepClone, uid } from "./utils.js";
+import { deepClone, uid } from "./utils.js";
 
 const profileCandidateTemplate = [
-  { key: "displayName", category: "Identidad", proposedValue: "Don Orlando López", sourceLabel: "Configuración visible de la instancia", confidence: "CONFIRMADO" },
-  { key: "productInstance", category: "Identidad", proposedValue: "Bitácora — Don Orlando López", sourceLabel: "Configuración del producto", confidence: "CONFIRMADO" },
-  { key: "locationGeneral", category: "Ubicación", proposedValue: "Capturar en este dispositivo", sourceLabel: "No incluida en la vista pública", confidence: "REVISAR" },
-  { key: "languages", category: "Idiomas", proposedValue: ["Capturar en este dispositivo"], sourceLabel: "No incluidos en la vista pública", confidence: "REVISAR" },
-  { key: "currentWork", category: "Trabajo", proposedValue: "Capturar en este dispositivo", sourceLabel: "No incluido en la vista pública", confidence: "REVISAR" },
-  { key: "builderProfile", category: "Capacidades", proposedValue: "Software, organización y automatización", sourceLabel: "Descripción general sanitizada", confidence: "PROBABLE" },
-  { key: "ecosystemRole", category: "Ecosistema", proposedValue: "Dirección y seguimiento de proyectos", sourceLabel: "Descripción general sanitizada", confidence: "PROBABLE" },
+  {
+    key: "displayName",
+    category: "Nombre",
+    proposedValue: "Tu nombre",
+    sourceLabel: "Se completa en este dispositivo",
+    confidence: "REVISAR"
+  },
+  {
+    key: "productInstance",
+    category: "Nombre de tu espacio",
+    proposedValue: "Mi Bitácora",
+    sourceLabel: "Configuración personal",
+    confidence: "REVISAR"
+  },
+  {
+    key: "locationGeneral",
+    category: "Ubicación general",
+    proposedValue: "Capturar en este dispositivo",
+    sourceLabel: "No se publica ni se sincroniza",
+    confidence: "REVISAR"
+  },
+  {
+    key: "languages",
+    category: "Idiomas",
+    proposedValue: ["Capturar en este dispositivo"],
+    sourceLabel: "Preferencias personales",
+    confidence: "REVISAR"
+  },
+  {
+    key: "currentWork",
+    category: "Trabajo o actividad principal",
+    proposedValue: "Capturar en este dispositivo",
+    sourceLabel: "Contexto opcional",
+    confidence: "REVISAR"
+  },
+  {
+    key: "builderProfile",
+    category: "Fortalezas",
+    proposedValue: "Organización, aprendizaje y ejecución",
+    sourceLabel: "Ejemplo editable",
+    confidence: "REVISAR"
+  },
+  {
+    key: "ecosystemRole",
+    category: "Rol personal",
+    proposedValue: "Dirigir mi vida y mis proyectos",
+    sourceLabel: "Ejemplo editable",
+    confidence: "REVISAR"
+  },
   {
     key: "goals",
     category: "Objetivos",
-    proposedValue: ["Organizar prioridades", "Registrar evidencia", "Recuperar tiempo", "Construir sistemas útiles"],
-    sourceLabel: "Objetivos demo sanitizados",
+    proposedValue: [
+      "Organizar mis prioridades",
+      "Terminar lo importante",
+      "Proteger mi tiempo y energía"
+    ],
+    sourceLabel: "Ejemplos editables",
     confidence: "REVISAR"
   },
   {
     key: "principles",
     category: "Principios",
-    proposedValue: ["Máximo tres prioridades activas", "No declarar progreso sin evidencia", "Proteger sistemas que funcionan"],
-    sourceLabel: "Principios operativos sanitizados",
-    confidence: "PROBABLE"
+    proposedValue: [
+      "Máximo tres prioridades activas",
+      "Todo avance deja evidencia",
+      "Primero ejecutar; después automatizar"
+    ],
+    sourceLabel: "Principios sugeridos",
+    confidence: "REVISAR"
   },
   {
     key: "preferences",
     category: "Preferencias de Bitácora",
-    proposedValue: ["Mobile-first", "Sin scroll global", "Diseño por puertas", "Progreso por gates"],
-    sourceLabel: "Especificación pública de la interfaz",
-    confidence: "CONFIRMADO"
+    proposedValue: [
+      "Mobile-first",
+      "Datos locales",
+      "Diseño por puertas",
+      "Respaldo manual"
+    ],
+    sourceLabel: "Configuración recomendada",
+    confidence: "REVISAR"
   },
   {
     key: "ecosystem",
-    category: "Proyectos y áreas",
-    proposedValue: ["Bitácora", "ORVA", "ORCE", "ACABEX", "OPOS", "QUADRUM"],
-    sourceLabel: "Puertas visibles del prototipo",
-    confidence: "CONFIRMADO"
+    category: "Áreas de mi vida",
+    proposedValue: ["Vida", "Trabajo", "Finanzas", "Proyectos", "Aprendizaje"],
+    sourceLabel: "Áreas sugeridas",
+    confidence: "REVISAR"
   }
 ];
 
 export function createProfileCandidates() {
-  return deepClone(profileCandidateTemplate).map(candidate => ({ ...candidate, decision: "pending", editedValue: undefined }));
+  return deepClone(profileCandidateTemplate).map(candidate => ({
+    ...candidate,
+    decision: "pending",
+    editedValue: undefined
+  }));
 }
 
 export function createDefaultState() {
   const createdAt = new Date().toISOString();
   return {
-    meta: { schemaVersion: 1, createdAt, updatedAt: createdAt, runtimeMode: "public-preview" },
+    meta: {
+      schemaVersion: 1,
+      edition: "bitacora-personal",
+      createdAt,
+      updatedAt: createdAt,
+      runtimeMode: "personal-local-first"
+    },
     profile: {
-      displayName: "Don Orlando López",
-      productName: "Bitácora",
-      instanceName: "Bitácora — Don Orlando López",
+      displayName: "Tu nombre",
+      productName: "Bitácora Personal",
+      instanceName: "Mi Bitácora",
       locationGeneral: "",
       languages: [],
       currentWork: "",
@@ -57,65 +122,77 @@ export function createDefaultState() {
       ecosystemRole: "",
       photoUrl: null,
       energy: 6,
-      focus: 7,
-      focusOfDay: "Validar Bitácora desde el teléfono",
-      priorityAction: "Revisar la experiencia móvil sin ingresar datos sensibles",
+      focus: 6,
+      focusOfDay: "Elige tu resultado decisivo",
+      priorityAction: "Completa Conocerme y define tu siguiente acción física",
       goals: [],
       principles: [],
       preferences: [],
       ecosystem: []
     },
-    discovery: { receipt: null, candidates: createProfileCandidates() },
-    alarms: [{
-      id: uid("alarm"), title: "Revisar la vista móvil", scheduledAt: addHours(2), recurrence: "none",
-      area: "Bitácora", projectId: "project-bitacora", status: "active", createdAt
-    }],
-    events: [{
-      id: uid("event"), title: "Prueba móvil de Bitácora", startsAt: addDays(1, 19, 0), endsAt: addDays(1, 19, 30),
-      type: "Revisión", area: "Bitácora", projectId: "project-bitacora", priority: "high",
-      notes: "Vista pública temporal con datos demo.", status: "scheduled", createdAt
-    }],
+    discovery: {
+      receipt: null,
+      candidates: createProfileCandidates()
+    },
+    alarms: [],
+    events: [],
     lifeCheckins: [],
+    quickCaptures: [],
     projects: [
       {
-        id: "project-bitacora", name: "Bitácora", category: "Producto personal", status: "ACTIVO",
-        objective: "Validar el centro de mando móvil.",
-        nextAction: "Revisar navegación, puertas y PWA en el teléfono.", blocker: "Datos remotos y autenticación fuera de U1.",
-        owner: "Don Orlando / Code-Codex", sourceOfTruth: "GitHub PR #1", needsOwner: true,
+        id: "project-first",
+        name: "Mi primer proyecto",
+        category: "Proyecto personal",
+        status: "EN REVISIÓN",
+        objective: "Convertir una meta en un resultado verificable.",
+        nextAction: "Define una acción que puedas terminar en menos de 60 minutos.",
+        blocker: "Falta personalizar el objetivo y la evidencia de cierre.",
+        owner: "Tú",
+        sourceOfTruth: "Esta Bitácora",
+        needsOwner: true,
         gates: [
-          { id: uid("gate"), code: "U0", title: "Contexto y auditoría", status: "PASS", evidenceUrl: "" },
-          { id: uid("gate"), code: "U1A", title: "Conocerme", status: "PASS", evidenceUrl: "" },
-          { id: uid("gate"), code: "U1B", title: "Shell local", status: "PASS", evidenceUrl: "" },
-          { id: uid("gate"), code: "U1M", title: "Validación móvil", status: "PENDING", evidenceUrl: "" }
+          { id: uid("gate"), code: "OBJ", title: "Objetivo definido", status: "PENDING", evidenceUrl: "" },
+          { id: uid("gate"), code: "ACT", title: "Siguiente acción definida", status: "PENDING", evidenceUrl: "" },
+          { id: uid("gate"), code: "EVI", title: "Evidencia producida", status: "PENDING", evidenceUrl: "" }
         ]
-      },
-      {
-        id: "project-opos", name: "OPOS POS", category: "Producto independiente", status: "OPERACIÓN",
-        objective: "Mostrar estado informativo sin tocar producción.",
-        nextAction: "Integración read-only futura.", blocker: "Fuera del alcance U1.",
-        owner: "Proyecto independiente", sourceOfTruth: "Repositorio independiente", needsOwner: false,
-        gates: [{ id: uid("gate"), code: "ISO", title: "Aislamiento", status: "PASS", evidenceUrl: "" }]
       }
     ],
-    attentionItems: [{
-      id: uid("attention"), projectId: "project-bitacora", area: "Bitácora", title: "Revisar la experiencia móvil",
-      reason: "La validación visual depende del propietario.", impact: "Define las correcciones de U1.",
-      urgency: "medium", status: "open", sourceUrl: "local://mobile-review", createdAt
-    }],
+    attentionItems: [
+      {
+        id: uid("attention"),
+        projectId: "project-first",
+        area: "Configuración",
+        title: "Completar Conocerme",
+        reason: "Bitácora necesita únicamente la información que tú decidas aprobar.",
+        impact: "Personaliza el nombre, las áreas y los objetivos de tu espacio.",
+        urgency: "medium",
+        status: "open",
+        sourceUrl: "local://profile-discovery",
+        createdAt
+      }
+    ],
     finance: {
-      liquidityStatus: "No disponible en preview", obligationsCount: 0, projectCapitalStatus: "No disponible en preview",
-      alerts: ["No ingreses saldos ni datos financieros en esta vista pública temporal."]
+      liquidityStatus: "Sin registrar",
+      obligationsCount: 0,
+      projectCapitalStatus: "Sin registrar",
+      alerts: ["Registra solo la información financiera que quieras conservar en este dispositivo."]
     },
-    activityEvents: [{
-      id: uid("activity"), projectId: "project-bitacora", source: "system", type: "PREVIEW",
-      title: "Vista móvil temporal", summary: "Build sanitizado para validar diseño y PWA sin información sensible.",
-      sourceUrl: "preview://runtime", occurredAt: createdAt
-    }],
+    activityEvents: [
+      {
+        id: uid("activity"),
+        projectId: "project-first",
+        source: "system",
+        type: "START",
+        title: "Bitácora Personal creada",
+        summary: "Espacio local listo para personalizar.",
+        sourceUrl: "local://welcome",
+        occurredAt: createdAt
+      }
+    ],
     connections: [
-      { id: "local", provider: "Almacenamiento del navegador", status: "ready", lastSyncAt: createdAt, lastError: "" },
-      { id: "github", provider: "GitHub", status: "planned", lastSyncAt: null, lastError: "" },
-      { id: "drive", provider: "Google Drive", status: "planned", lastSyncAt: null, lastError: "" },
-      { id: "calendar", provider: "Google Calendar", status: "planned", lastSyncAt: null, lastError: "" }
+      { id: "local", provider: "Almacenamiento del dispositivo", status: "ready", lastSyncAt: createdAt, lastError: "" },
+      { id: "calendar", provider: "Calendario del dispositivo", status: "manual-export", lastSyncAt: null, lastError: "" },
+      { id: "cloud", provider: "Sincronización privada", status: "future", lastSyncAt: null, lastError: "" }
     ]
   };
 }
