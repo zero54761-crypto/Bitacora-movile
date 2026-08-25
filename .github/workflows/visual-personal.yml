@@ -14,7 +14,7 @@ permissions:
 jobs:
   mobile:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,13 +102,14 @@ jobs:
               await page.getByText('Revisar mi prioridad', { exact: true }).waitFor();
               await page.screenshot({ path: `artifacts/visual/calendar-${viewport.name}.png`, fullPage: true });
 
-              // One representative offline gate is sufficient; both viewports
-              // still exercise the complete onboarding and calendar flow.
               if (viewportIndex === 0) {
                 await page.goto('http://127.0.0.1:8099/', { waitUntil: 'networkidle' });
                 await page.evaluate(async () => {
                   if (!('serviceWorker' in navigator)) throw new Error('Service worker no soportado.');
-                  await navigator.serviceWorker.ready;
+                  await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('El service worker no se activó en 6 segundos.')), 6_000))
+                  ]);
                 });
                 await page.reload({ waitUntil: 'networkidle' });
                 await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
