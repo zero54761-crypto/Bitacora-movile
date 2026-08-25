@@ -87,9 +87,10 @@ root.addEventListener("submit", event => {
   event.preventDefault();
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
-  if (form.id === "alarm-form") handleAlarmSubmit(form);
-  if (form.id === "event-form") handleEventSubmit(form);
-  if (form.id === "life-form") handleLifeSubmit(form);
+  const formId = form.getAttribute("id") || "";
+  if (formId === "alarm-form") handleAlarmSubmit(form);
+  if (formId === "event-form") handleEventSubmit(form);
+  if (formId === "life-form") handleLifeSubmit(form);
 });
 
 root.addEventListener("input", event => {
