@@ -25,7 +25,7 @@ function stableUid(event) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "event";
-  return `${base}@bitacora.local`;
+  return `${base}@bitacora-personal.local`;
 }
 
 export function buildIcsEvent(event, generatedAt = new Date().toISOString()) {
@@ -43,7 +43,7 @@ export function buildIcsEvent(event, generatedAt = new Date().toISOString()) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Bitacora//Don Orlando Lopez//ES",
+    "PRODID:-//Bitacora Personal//Local First//ES",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
