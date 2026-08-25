@@ -1,6 +1,6 @@
 import { deepClone, parseCandidateValue, serializeCandidateValue } from "./utils.js";
 
-export const DISCOVERY_VERSION = "u1-local-seed-v1";
+export const DISCOVERY_VERSION = "bitacora-personal-v1";
 
 export function decideCandidate(candidates, key, decision, editedRawValue) {
   const allowed = new Set(["pending", "accepted", "edited", "rejected"]);
@@ -37,7 +37,7 @@ export function buildDiscoveryReceipt(candidates, consentedAt = new Date().toISO
     version: DISCOVERY_VERSION,
     completedAt,
     consentedAt,
-    sourceMode: "local-seed",
+    sourceMode: "user-reviewed-local-examples",
     acceptedFieldKeys: acceptedCandidates(candidates).map(candidate => candidate.key),
     rejectedFieldKeys: rejectedCandidates(candidates).map(candidate => candidate.key),
     sourceLabels: [...new Set(candidates.map(candidate => candidate.sourceLabel))]
